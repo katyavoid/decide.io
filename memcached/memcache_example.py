@@ -102,7 +102,7 @@ if __name__ == '__main__':
         m = Memcache_example()
         result = m.main()
         if not result:
-            print "Something went wrong during fulling it in"
+            print "Something went wrong during filling it in"
         for i in result:
             print i[0], i[1]
     except KeyboardInterrupt:

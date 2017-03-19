@@ -62,3 +62,4 @@ I decided to make a small test based on this method and realised that we need to
 
 As far as I can't be sure that we don't want to encrypt keys as well, I used a short key RSA(1024). It doesn't work without additional tricks and because I am getting "memcache.MemcachedKeyCharacterError: Control/space characters not allowed", added base32 to avoid it(base64 also isn't working).
 
+A funny fact is that despite having sasl, a default python library doesn't have any autorization methods available
