@@ -52,4 +52,10 @@ The main thing is – do not store it in a repo or a package(.deb/.rpm) itself, 
 Which architecture? Which data will be stored there? Which problem are we going to solve? 
 It might appear that memcache is not a proper techlonogy for a given problem. 
 
-Depending on a type of data we can differently adjust it, play with chunks size, alignment, bucket size, compression. We also need to pay attention what is stored there and how many hits this data has, just to not flood it with data that nobody uses.  
+Depending on a type of data we can differently adjust it, play with chunks size, alignment, bucket size, compression. We also need to pay attention what is stored there and how many hits this data has, just to not flood it with data that nobody uses. 
+
+5. Checking of hypothesis
+
+I've choosen (f) for checking as far as it doesn't require additional systems and looks comparatively easy. 
+
+I decided to make a small test based on this method and realised that we need to choose encryption methods very carefully as far as it doesn't allow to store keys more than 250 symbols len. If we use a shorter key RSA(1024), it breaks on "memcache.MemcachedKeyCharacterError: Control/space characters not allowed", so base32 in addition. Overall it works, but there are limitations that we need to take into account, we consume CPU. 
