@@ -24,13 +24,13 @@ I also assume that we don't want to go into extremes to make our own life much h
 
 3. Ways of storing super secret passwords.
 
-  a. We can have something like vault https://www.vaultproject.io/intro/index.html and access it only with sertificates. During the initialisation a program makes a request and gets a password, stores not in a config file but in an object inself. 
+  a. We can have something like vault https://www.vaultproject.io/intro/index.html and access it only with certificates. During the initialization, a program makes a request and gets a password, stores not in a config file but in a running context. 
     Pros: Better than just putting passwords in a config file, secrets are manageable, we don't need to reinvent a wheel
-    Cons: A bit complex, adds a single point of failure, so the system has to be duplicated and they should be deployed in a different time as well to avoid human factor(one mistake in a config file can put off both systems). Vault itself is pretty slow due to internal serialisation of queries, but if its used not in a real-time, we don't really mind.
+    Cons: A bit complex, adds a single point of failure, so the system has to be duplicated and they should be deployed in a different time as well to avoid human factor(one mistake in a config file can put off both systems). Vault itself is pretty slow due to internal serialization of queries, but if its used not in a real-time, we don't really mind.
 
-  b. Not about passwords, but can be useful. Create an internal CA and use certificates for autorisation. We can validate whatever we want to inside of a certificate, e.g. a hostname, a host signature and any other attributes of a particular server, so if a certificate is stolen, then it can't be used because of this set of details. Internal CA allows us to revoke and manage certificates. Servers itself can pull for new certificates and exchange then.
+  b. Not about passwords, but can be useful. Create an internal CA and use certificates for autorization. We can validate whatever we want right inside of a certificate, e.g. a hostname, a host signature and any other attributes of a particular server, so if a certificate is stolen, then it can't be used because of this set of details. Internal CA allows us to revoke and manage certificates. Servers itself can pull for new certificates and exchange then.
     Pros: Secure, we don't even need to know passwords, can be as automated as we want to
-    Cons: Not sure that there are good solutions for this, can be a nesessity to write it on our own
+    Cons: Not sure that there are good solutions for this, can be a necessity to write it on our own
 
   c. Encrypted git-repo with pgp-keys. Saltstack can manage it. 
     Pros: out-of-the-box functionality that doesn't require too much effort
@@ -40,7 +40,7 @@ I also assume that we don't want to go into extremes to make our own life much h
 
   e. Use something like oauth/tokens, but it looks way more complicated than should be
 
-  f. Encrypt information in memcache itself, so even if somebody has access to memcache, it doesn't automatically lead to data leaks. In case when somebody deletes or coppurts it, we can use HMAC. Encrypt by key, a key is generated and populated on-the-fly. 
+  f. Encrypt information in memcache itself, so even if somebody has access to memcache, it doesn't automatically lead to data leaks. In case when somebody deletes or corrupts it, we can use HMAC. Encrypt by key, a key is generated and populated on-the-fly. 
     Cons: CPU-time, context-switches
 
 The main thing is – do not store it in a repo or a package(.deb/.rpm) itself, use different credentials for development, testing and production. In most of places access to development/testing is more relaxed, so we don't want to use same keys. 
@@ -50,12 +50,15 @@ The main thing is – do not store it in a repo or a package(.deb/.rpm) itself, 
 
 >> Explain or draw how memcache could fit into the existing architecture
 Which architecture? Which data will be stored there? Which problem are we going to solve? 
-It might appear that memcache is not a proper techlonogy for a given problem. 
+It might appear that memcache is not a proper technology for a given problem. 
 
 Depending on a type of data we can differently adjust it, play with chunks size, alignment, bucket size, compression. We also need to pay attention what is stored there and how many hits this data has, just to not flood it with data that nobody uses. 
 
 5. Checking of hypothesis
 
-I've choosen (f) for checking as far as it doesn't require additional systems and looks comparatively easy. 
+I've chosen (f) for checking as far as it doesn't require additional systems and looks comparatively easy. 
 
-I decided to make a small test based on this method and realised that we need to choose encryption methods very carefully as far as it doesn't allow to store keys more than 250 symbols len. If we use a shorter key RSA(1024), it breaks on "memcache.MemcachedKeyCharacterError: Control/space characters not allowed", so base32 in addition. Overall it works, but there are limitations that we need to take into account, we consume CPU. 
+I decided to make a small test based on this method and realised that we need to choose encryption methods very carefully as far as memcached doesn't allow to store keys more than 250 symbols len. If we don't encrypt keys, but only values, then we can use good long keys for encryption. We can also store initial keys in the code itself and put them into memcached as an md5-hash. 
+
+As far as I can't be sure that we don't want to encrypt keys as well, I used a short key RSA(1024). It doesn't work without additional tricks and because I am getting "memcache.MemcachedKeyCharacterError: Control/space characters not allowed", added base32 to avoid it(base64 also isn't working).
+
