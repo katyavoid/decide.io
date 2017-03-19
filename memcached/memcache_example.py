@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 from Crypto.Cipher import PKCS1_OAEP, PKCS1_v1_5
 from Crypto.PublicKey import RSA
 import memcache
