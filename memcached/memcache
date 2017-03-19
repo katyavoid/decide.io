@@ -1,0 +1,55 @@
+Part 2: 
+
+The developers are discussing adding memcache to the app and a super secret password that must be stored in as secure a fashion as possible. Explain or draw how memcache could fit into the existing architecture and any complications with configuration. Propose some methods for handling the password in the production environment. 
+
+1. My interpretation of the task
+
+Here is it said about memcache and a password. I don't quite get whether this super secret password is about memcache only or we're talking about something more general. I will talk about memcache but also the same principles are pretty similar regardless the technology. 
+
+NOTE: The discussion itself can be quite long, I don't declare that here there is at least half of the methods. Nether I am a security expert. 
+
+2. Basic things about memcache and security overall, just a glimpse of common sense
+
+If memcache can be used locally, then use it locally. Specify -l 127.0.0.1 to not allow anybody to read information from any external servers.
+
+Use the least privileged user, memcached doesn't need anything. In case of a new vulnerability it simply won't be able to do anything. (a nice example: CVE-2016-8704)
+
+We are not trying to stay protected from a root user, we protect a root user itself and don't use it by default. The reason is simple – if somebody has root access, it is a matter of time when this person will get all the necessary data. If data is not stored locally, we always have options with gdb and reading memory, we can also trace and modify things. So, don't implement any additional complexity that also requires too much effort and won't be paid off.
+
+Better not to make a ring out of memcaches. Back then when we were doing it and the only one memcached was unavailable, the whole ring was unavailable. Not sure whether it has been changed or not, but better to not rely on it as a good persistent fault-tolerant database. Makes a sense to keep it stateless and do not rely on this data.
+Keep it simple.
+
+I also assume that we don't want to go into extremes to make our own life much harder. No manual things are involved. 
+
+
+3. Ways of storing super secret passwords.
+
+  a. We can have something like vault https://www.vaultproject.io/intro/index.html and access it only with sertificates. During the initialisation a program makes a request and gets a password, stores not in a config file but in an object inself. 
+    Pros: Better than just putting passwords in a config file, secrets are manageable, we don't need to reinvent a wheel
+    Cons: A bit complex, adds a single point of failure, so the system has to be duplicated and they should be deployed in a different time as well to avoid human factor(one mistake in a config file can put off both systems). Vault itself is pretty slow due to internal serialisation of queries, but if its used not in a real-time, we don't really mind.
+
+  b. Not about passwords, but can be useful. Create an internal CA and use certificates for autorisation. We can validate whatever we want to inside of a certificate, e.g. a hostname, a host signature and any other attributes of a particular server, so if a certificate is stolen, then it can't be used because of this set of details. Internal CA allows us to revoke and manage certificates. Servers itself can pull for new certificates and exchange then.
+    Pros: Secure, we don't even need to know passwords, can be as automated as we want to
+    Cons: Not sure that there are good solutions for this, can be a nesessity to write it on our own
+
+  c. Encrypted git-repo with pgp-keys. Saltstack can manage it. 
+    Pros: out-of-the-box functionality that doesn't require too much effort
+    Cons: We still implement yet another system and can end up with dozens of them
+
+  d. Chef/encrypted databags. I am not sure whether it is Oracle-specific or overall, but using it was painful. If you have a centralised chef server(not chef-solo) and a lot of cookbooks, there maybe problems with performance due to dependancy-resolution mechanism in chef. It uses pgsql and turns it inside out when tries to resolve dependancies. In Oracle we ended up with writing of our own key-value storage for secrets instead of databags. I actively participated in it when was in SRE team. 
+
+  e. Use something like oauth/tokens, but it looks way more complicated than should be
+
+  f. Encrypt information in memcache itself, so even if somebody has access to memcache, it doesn't automatically lead to data leaks. In case when somebody deletes or coppurts it, we can use HMAC. Encrypt by key, a key is generated and populated on-the-fly. 
+    Cons: CPU-time, context-switches
+
+The main thing is – do not store it in a repo or a package(.deb/.rpm) itself, use different credentials for development, testing and production. In most of places access to development/testing is more relaxed, so we don't want to use same keys. 
+
+
+4. How memcache fits into architecture
+
+>> Explain or draw how memcache could fit into the existing architecture
+Which architecture? Which data will be stored there? Which problem are we going to solve? 
+It might appear that memcache is not a proper techlonogy for a given problem. 
+
+Depending on a type of data we can differently adjust it, play with chunks size, alignment, bucket size, compression. We also need to pay attention what is stored there and how many hits this data has, just to not flood it with data that nobody uses.  
